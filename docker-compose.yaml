@@ -13,5 +13,15 @@ services:
     volumes:
       - pg-data:/var/lib/postgresql
 
+  cache-auth-management:
+    container_name: cache-auth-management
+    hostname: cache-auth-management
+    image: docker.io/library/memcached:latest
+    ports:
+      - "11211:11211"
+    command:
+      - --conn-limit=1024
+      - --memory-limit=64
+      - --threads=4
 volumes:
   pg-data:

@@ -29,3 +29,14 @@ func (h *UserHandler) UserRegister(w http.ResponseWriter, r *http.Request) {
 	}
 	response.Success(w, http.StatusCreated, "OK", r.URL.Path)
 }
+func (h *UserHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
+	request := new(dto.UserRequest)
+	if err := json.NewDecoder(r.Body).Decode(request); err != nil {
+		panic(response.Except(http.StatusBadRequest, "failed decode body to json"))
+	}
+	result, err := h.userService.UserLogin(request)
+	if err != nil {
+		panic(err)
+	}
+	response.Success(w, http.StatusOK, result, r.URL.Path)
+}

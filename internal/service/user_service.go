@@ -1,32 +1,37 @@
 package service
 
 import (
+	"auth-management/internal/cache"
 	"auth-management/internal/entity"
 	"auth-management/internal/repository"
 	"auth-management/pkg/dto"
 	"auth-management/pkg/enum"
 	"auth-management/pkg/response"
-	"database/sql"
+	"auth-management/pkg/security"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type UserService struct {
 	logger         zerolog.Logger
 	validator      *validator.Validate
 	userRepository *repository.UserRepository
+	tokenCache     *cache.TokenCache
 }
 
-func NewUserService(logger zerolog.Logger, validator *validator.Validate, userRepository *repository.UserRepository) *UserService {
+func NewUserService(logger zerolog.Logger, validator *validator.Validate, userRepository *repository.UserRepository, tokenCache *cache.TokenCache) *UserService {
 	return &UserService{
 		logger:         logger,
 		validator:      validator,
 		userRepository: userRepository,
+		tokenCache:     tokenCache,
 	}
 }
 func (s *UserService) UserRegister(request *dto.UserRequest) error {
@@ -71,17 +76,41 @@ func (s *UserService) UserLogin(request *dto.UserRequest) (*dto.TokenResponse, e
 	newUsername := strings.ToLower(request.Username)
 	user, err := s.userRepository.FindByUsername(newUsername)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == gorm.ErrRecordNotFound {
 			s.logger.Warn().Err(err).Msg("username or password wrong")
 			return nil, response.Except(http.StatusBadRequest, "username or password wrong")
+		} else {
+			s.logger.Error().Err(err).Msg("failed find by username to database")
+			return nil, err
 		}
-		s.logger.Error().Err(err).Msg("failed find by username to database")
-		return nil, err
 	}
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(request.Password)); err != nil {
 		s.logger.Warn().Err(err).Msg("username or password wrong")
 		return nil, response.Except(http.StatusBadRequest, "username or password wrong")
 	}
-
-	return nil, nil
+	secret := []byte(os.Getenv("JWT_SECRET"))
+	accessToken, err := security.JwtGenerateAccessToken(user.Id, user.Role, secret)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed generate access token to jwt")
+		return nil, err
+	}
+	refreshToken, expUnix, err := security.JwtGenerateRefreshToken(user.Id, user.Role, secret)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed generate refresh token to jwt")
+		return nil, err
+	}
+	value := &cache.RefreshData{
+		UserId: user.Id,
+		Role:   user.Role,
+	}
+	if err := s.tokenCache.SetRefreshToken(refreshToken, value, expUnix); err != nil {
+		s.logger.Error().Err(err).Msg("failed set refresh token to cache")
+		return nil, err
+	}
+	resp := &dto.TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}
+	s.logger.Info().Str("username", user.Username).Msg("user login success")
+	return resp, nil
 }

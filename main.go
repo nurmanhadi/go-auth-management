@@ -10,9 +10,11 @@ func main() {
 	logger := config.NewLogger()
 	validator := config.NewValidator()
 	db := config.NewDatabase()
+	cache := config.NewCache()
 	r := config.NewRouter()
 	config.Initialize(&config.Bootstrap{
 		DB:        db,
+		Cache:     cache,
 		Logger:    logger,
 		Router:    r,
 		Validator: validator,
