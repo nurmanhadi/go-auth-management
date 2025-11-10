@@ -1,0 +1,17 @@
+services:
+  db-auth-management:
+    container_name: db-auth-management
+    hostname: db-auth-management
+    image: docker.io/library/postgres:18
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+      PGDATA: /var/lib/postgresql/18/docker
+    volumes:
+      - pg-data:/var/lib/postgresql
+
+volumes:
+  pg-data:
