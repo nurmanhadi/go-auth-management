@@ -23,7 +23,6 @@ func main() {
 		Validator: validator,
 		Ch:        ch,
 	})
-
 	err := http.ListenAndServe("0.0.0.0:3000", r)
 	if err != nil {
 		panic(err)
