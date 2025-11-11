@@ -16,6 +16,7 @@ func (r *Router) New() {
 		api.Route("/auth", func(auth chi.Router) {
 			auth.Post("/register", r.UserHandler.UserRegister)
 			auth.Post("/login", r.UserHandler.UserLogin)
+			auth.Post("/token", r.UserHandler.UserGenerateToken)
 		})
 	})
 }

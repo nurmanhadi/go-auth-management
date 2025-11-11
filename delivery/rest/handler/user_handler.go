@@ -40,3 +40,14 @@ func (h *UserHandler) UserLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	response.Success(w, http.StatusOK, result, r.URL.Path)
 }
+func (h *UserHandler) UserGenerateToken(w http.ResponseWriter, r *http.Request) {
+	request := new(dto.UserGenerateToken)
+	if err := json.NewDecoder(r.Body).Decode(request); err != nil {
+		panic(response.Except(http.StatusBadRequest, "failed decode body to json"))
+	}
+	result, err := h.userService.UserGenerateToken(request)
+	if err != nil {
+		panic(err)
+	}
+	response.Success(w, http.StatusOK, result, r.URL.Path)
+}

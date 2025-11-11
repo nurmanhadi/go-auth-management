@@ -15,6 +15,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -123,5 +124,52 @@ func (s *UserService) UserLogin(request *dto.UserRequest) (*dto.TokenResponse, e
 		RefreshToken: hashRefreshToken,
 	}
 	s.logger.Info().Str("username", user.Username).Msg("user login success")
+	return resp, nil
+}
+func (s *UserService) UserGenerateToken(request *dto.UserGenerateToken) (*dto.TokenResponse, error) {
+	if err := s.validator.Struct(request); err != nil {
+		s.logger.Warn().Err(err).Msg("failed to validate request")
+		return nil, err
+	}
+	token, err := s.tokenCache.GetRefreshToken(request.RefreshToken)
+	if err != nil {
+		if err == memcache.ErrCacheMiss {
+			s.logger.Warn().Err(err).Msg("token missing")
+			return nil, response.Except(http.StatusUnauthorized, "token missing")
+		}
+		s.logger.Error().Err(err).Msg("failed get refresh token to cache")
+		return nil, err
+	}
+	claim, err := security.JwtVerify(token)
+	if err != nil {
+		s.logger.Warn().Err(err).Msg("failed verify token to jwt")
+		return nil, response.Except(http.StatusUnauthorized, "cannot processed token")
+	}
+	secret := []byte(os.Getenv("JWT_SECRET"))
+	accessToken, err := security.JwtGenerateAccessToken(claim.Subject, claim.Role, secret)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed generate access token to jwt")
+		return nil, err
+	}
+	refreshToken, expUnix, err := security.JwtGenerateRefreshToken(claim.Subject, claim.Role, secret)
+	if err != nil {
+		s.logger.Error().Err(err).Msg("failed generate refresh token to jwt")
+		return nil, err
+	}
+	hashRefreshToken := pkg.HashToSha256(refreshToken)
+	if err := s.tokenCache.RemoveRefreshToken(request.RefreshToken); err != nil {
+		s.logger.Error().Err(err).Msg("failed remove refresh token to cache")
+		return nil, err
+	}
+	if err := s.tokenCache.SetRefreshToken(hashRefreshToken, refreshToken, expUnix); err != nil {
+		s.logger.Error().Err(err).Msg("failed set refresh token to cache")
+		return nil, err
+	}
+
+	resp := &dto.TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: hashRefreshToken,
+	}
+	s.logger.Info().Str("user_id", claim.Subject).Msg("user generate token success")
 	return resp, nil
 }
