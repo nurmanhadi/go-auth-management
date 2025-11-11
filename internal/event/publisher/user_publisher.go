@@ -26,7 +26,7 @@ func (e *UserPublisher) PublishUserRegistered(data *event.UserRegisteredPublish)
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	err = e.ch.PublishWithContext(ctx,
-		"auth.management",
+		"auth.exchange",
 		"user.registered",
 		false,
 		false,

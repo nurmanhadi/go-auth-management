@@ -6,6 +6,7 @@ import (
 	"auth-management/internal/event"
 	"auth-management/internal/event/publisher"
 	"auth-management/internal/repository"
+	"auth-management/pkg"
 	"auth-management/pkg/dto"
 	"auth-management/pkg/enum"
 	"auth-management/pkg/response"
@@ -112,17 +113,14 @@ func (s *UserService) UserLogin(request *dto.UserRequest) (*dto.TokenResponse, e
 		s.logger.Error().Err(err).Msg("failed generate refresh token to jwt")
 		return nil, err
 	}
-	value := &cache.RefreshData{
-		UserId: user.Id,
-		Role:   user.Role,
-	}
-	if err := s.tokenCache.SetRefreshToken(refreshToken, value, expUnix); err != nil {
+	hashRefreshToken := pkg.HashToSha256(refreshToken)
+	if err := s.tokenCache.SetRefreshToken(hashRefreshToken, refreshToken, expUnix); err != nil {
 		s.logger.Error().Err(err).Msg("failed set refresh token to cache")
 		return nil, err
 	}
 	resp := &dto.TokenResponse{
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		RefreshToken: hashRefreshToken,
 	}
 	s.logger.Info().Str("username", user.Username).Msg("user login success")
 	return resp, nil
