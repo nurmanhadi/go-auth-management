@@ -3,6 +3,8 @@ package service
 import (
 	"auth-management/internal/cache"
 	"auth-management/internal/entity"
+	"auth-management/internal/event"
+	"auth-management/internal/event/publisher"
 	"auth-management/internal/repository"
 	"auth-management/pkg/dto"
 	"auth-management/pkg/enum"
@@ -24,14 +26,16 @@ type UserService struct {
 	validator      *validator.Validate
 	userRepository *repository.UserRepository
 	tokenCache     *cache.TokenCache
+	userPublisher  *publisher.UserPublisher
 }
 
-func NewUserService(logger zerolog.Logger, validator *validator.Validate, userRepository *repository.UserRepository, tokenCache *cache.TokenCache) *UserService {
+func NewUserService(logger zerolog.Logger, validator *validator.Validate, userRepository *repository.UserRepository, tokenCache *cache.TokenCache, userPublisher *publisher.UserPublisher) *UserService {
 	return &UserService{
 		logger:         logger,
 		validator:      validator,
 		userRepository: userRepository,
 		tokenCache:     tokenCache,
+		userPublisher:  userPublisher,
 	}
 }
 func (s *UserService) UserRegister(request *dto.UserRequest) error {
@@ -65,6 +69,15 @@ func (s *UserService) UserRegister(request *dto.UserRequest) error {
 		s.logger.Error().Err(err).Msg("failed create user to database")
 		return err
 	}
+	go func() {
+		data := &event.UserRegisteredPublish{
+			UserId: id,
+		}
+		if err := s.userPublisher.PublishUserRegistered(data); err != nil {
+			s.logger.Error().Err(err).Msg("failed publish user registered to publisher")
+			return
+		}
+	}()
 	s.logger.Info().Str("username", newUsername).Msg("user register success")
 	return nil
 }
