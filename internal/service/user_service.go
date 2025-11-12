@@ -3,7 +3,6 @@ package service
 import (
 	"auth-management/internal/cache"
 	"auth-management/internal/entity"
-	"auth-management/internal/event"
 	"auth-management/internal/event/publisher"
 	"auth-management/internal/repository"
 	"auth-management/pkg"
@@ -14,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/bradfitz/gomemcache/memcache"
 	"github.com/go-playground/validator/v10"
@@ -61,19 +61,26 @@ func (s *UserService) UserRegister(request *dto.UserRequest) error {
 		return err
 	}
 	id := uuid.NewString()
+	createdAt := time.Now()
 	user := &entity.User{
-		Id:       id,
-		Username: newUsername,
-		Password: string(hashPassword),
-		Role:     enum.ROLE_USER,
+		Id:        id,
+		Username:  newUsername,
+		Password:  string(hashPassword),
+		Role:      enum.ROLE_USER,
+		CreatedAt: createdAt,
 	}
 	if err := s.userRepository.Create(user); err != nil {
 		s.logger.Error().Err(err).Msg("failed create user to database")
 		return err
 	}
 	go func() {
-		data := &event.UserRegisteredPublish{
-			UserId: id,
+		data := &dto.EventUserPayload{
+			Event:     "user.registered",
+			Timestamp: time.Now(),
+			Data: dto.EventUserData{
+				UserId:        id,
+				Registered_at: createdAt,
+			},
 		}
 		if err := s.userPublisher.PublishUserRegistered(data); err != nil {
 			s.logger.Error().Err(err).Msg("failed publish user registered to publisher")

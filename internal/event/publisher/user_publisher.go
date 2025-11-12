@@ -1,7 +1,7 @@
 package publisher
 
 import (
-	"auth-management/internal/event"
+	"auth-management/pkg/dto"
 	"context"
 	"time"
 
@@ -18,7 +18,7 @@ func NewUserPublisher(ch *amqp.Channel) *UserPublisher {
 		ch: ch,
 	}
 }
-func (e *UserPublisher) PublishUserRegistered(data *event.UserRegisteredPublish) error {
+func (e *UserPublisher) PublishUserRegistered(data *dto.EventUserPayload) error {
 	body, err := json.Marshal(data)
 	if err != nil {
 		return err
