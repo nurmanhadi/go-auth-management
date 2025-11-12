@@ -79,6 +79,7 @@ func (s *UserService) UserRegister(request *dto.UserRequest) error {
 			Timestamp: time.Now(),
 			Data: dto.EventUserData{
 				UserId:        id,
+				Username:      newUsername,
 				Registered_at: createdAt,
 			},
 		}

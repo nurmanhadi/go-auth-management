@@ -206,6 +206,7 @@ Published when a new user successfully registers.
   "timestamp": "2025-11-12T10:30:00Z",
   "data": {
     "user_id": "uuid-here",
+    "username": "username",
     "registered_at": "2025-11-12T10:30:00Z"
   }
 }

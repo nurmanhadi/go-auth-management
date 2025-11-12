@@ -9,5 +9,6 @@ type EventUserPayload struct {
 }
 type EventUserData struct {
 	UserId        string    `json:"user_id"`
+	Username      string    `json:"username"`
 	Registered_at time.Time `json:"registered_at"`
 }
