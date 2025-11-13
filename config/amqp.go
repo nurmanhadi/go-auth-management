@@ -13,7 +13,7 @@ func NewAmqp() (*amqp.Connection, *amqp.Channel) {
 		os.Getenv("BROKER_PASSWORD"),
 		os.Getenv("BROKER_HOST"),
 		os.Getenv("BROKER_PORT"),
-		os.Getenv("BROKER_VA"),
+		os.Getenv("BROKER_VHOST"),
 	)
 	conn, err := amqp.Dial(url)
 	if err != nil {
